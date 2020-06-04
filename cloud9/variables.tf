@@ -10,5 +10,5 @@ variable "path_component" {
 
 variable "repository_url" {
   type    = string
-  default = "https://github.com/tjbell/ec2-js-sdk"
+  default = ""
 }
