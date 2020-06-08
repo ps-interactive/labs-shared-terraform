@@ -1,0 +1,97 @@
+#This template is associated with the lab named "Automate Infrastructure
+#with CloudFormation."
+#
+#This template defines the web infrastructure.  The web infrastructure
+#defines two web servers in two separate availability zones.  These
+#represent two separate web apps, and run in two separate availability
+#zones.
+
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: |
+  Defines two web servers in the infrastructure created by the
+  core-infrastructure CloudFormation stack.
+
+Parameters:
+  LatestAMI:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+    
+  App1IsUp:
+    Description: Specifies whether the app1 host is up
+    Type: String
+    AllowedValues:
+      - false
+      - true
+    Default: true
+
+  App2IsUp:
+    Description: Specifies whether the app2 host is up
+    Type: String
+    AllowedValues:
+      - false
+      - true
+    Default: true
+
+Conditions:
+  LaunchApp1: !Equals [ !Ref App1IsUp, true ]
+  LaunchApp2: !Equals [ !Ref App2IsUp, true ]
+  
+Resources:
+  App1Host:
+    Type: "AWS::EC2::Instance"
+    Condition: LaunchApp1
+    Properties:
+      ImageId: !Ref LatestAMI
+      InstanceType: t3.micro
+      NetworkInterfaces:
+        -
+          AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: 0
+          GroupSet:
+            - !ImportValue core-infrastructure-UnrestrictedNonSslSg
+          PrivateIpAddress: 172.16.16.37
+          SubnetId: !ImportValue core-infrastructure-ExternalASubnet
+      Tags:
+        -
+          Key: Name
+          Value: app1
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          yum -y install httpd
+          echo "<html><head><title>App 1</title></head><h1>App 1</h1><p>This is the app 1 server.</p></html>" > /var/www/html/index.html
+          chmod 644 /var/www/index.html
+          chown apache.apache /var/www/html/index.html
+          systemctl enable httpd.service
+          systemctl start httpd.service
+          
+  App2Host:
+    Type: "AWS::EC2::Instance"
+    Condition: LaunchApp2
+    Properties:
+      ImageId: !Ref LatestAMI
+      InstanceType: t3.micro
+      NetworkInterfaces:
+        -
+          AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: 0
+          GroupSet:
+            - !ImportValue core-infrastructure-UnrestrictedNonSslSg
+          PrivateIpAddress: 172.16.16.166
+          SubnetId: !ImportValue core-infrastructure-ExternalBSubnet
+      Tags:
+        -
+          Key: Name
+          Value: app2
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          yum -y install httpd
+          echo "<html><head><title>App 2</title></head><h1>App 2</h1><p>This is the app 2 server.</p></html>" > /var/www/html/index.html
+          chmod 644 /var/www/index.html
+          chown apache.apache /var/www/html/index.html
+          systemctl enable httpd.service
+          systemctl start httpd.service

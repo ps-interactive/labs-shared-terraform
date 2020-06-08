@@ -1,0 +1,163 @@
+#This template is associated with the lab named "Automate Infrastructure
+#with CloudFormation."
+#
+#This template defines the core infrastructure.  The core infrastructure
+#in this case includes those things that are shared across more specific
+#infrastructure systems.  For the purpose of this lab, there will be
+#one specific infrastructure system for web servers.  Other architectural
+#approaches might have a templates for intranet, backoffice, divisions,
+#etc.
+
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: |
+  Defines a VPC (Virtual Private Cloud), subnets, routing and Security
+  Groups sufficient to support the needs of a basic cloud infrastructure
+  supporting a small company or organization.
+
+Resources:
+  ################################################################################
+  #                                     VPC                                      #
+  ################################################################################
+  #This is the VPC that will contain the cloud infrastructure elements.
+  #The choices for EnableDnsSupport and InstanceTenancy make explicit
+  #the default settings for these attributes.  The choice for
+  #EnableDnsHostNames overrides the default.
+  Vpc:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: "172.16.16.0/24"
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        -
+          Key: Name
+          Value: infrastructure
+          
+  #This may be slightly overbuilt for the lab, but it is reasonable
+  #boiler plate for a general-purpose infrastructure.
+  
+  #This facilitates external routing
+  PublicRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        -
+          Key: Name
+          Value: infrastructure-external
+          
+  #Declares an InternetGateway
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        -
+          Key: Name
+          Value: infrastructure
+          
+  #Attaches the InternetGateway to the VPC
+  InternetGatewayAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref Vpc
+      
+  #Default route to the internet
+  InternetRoute:
+    Type: "AWS::EC2::Route"
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicRouteTable
+      
+  ################################################################################
+  #                                   Subnets                                    #
+  ################################################################################
+  #A subnet in region A with access to the public internet
+  ExternalA:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Sub '${AWS::Region}a'
+      CidrBlock: "172.16.16.32/27"
+      VpcId: !Ref Vpc
+      Tags:
+        -
+          Key: Name
+          Value: external-a
+          
+  #Route association for external-a
+  ExternalARouteAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref ExternalA
+      
+  #A subnet in region B with access to the public internet
+  ExternalB:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Sub '${AWS::Region}b'
+      CidrBlock: "172.16.16.160/27"
+      VpcId: !Ref Vpc
+      Tags:
+        -
+          Key: Name
+          Value: external-b
+          
+  #Route association for external-b
+  ExternalBRouteAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref ExternalB
+
+  ################################################################################
+  #                               Security Groups                                #
+  ################################################################################
+  #Port 80 from anywhere
+  UnrestrictedNonSslSg:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Permits non-ssl http for port 80 from the private network.
+      SecurityGroupIngress:
+        -
+          CidrIp: 0.0.0.0/0
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+      VpcId: !Ref Vpc
+
+ ################################################################################
+ #                                   Outputs                                    #
+ ################################################################################
+Outputs:
+  #This makes the VPC ID available to other stacks
+  CoreInfrastructureVpc:
+    Description: The ID of the Core Infrastructure VPC
+    Value: !Ref Vpc
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcId"
+      
+  #This makes the External A subnet ID available to other stacks
+  ExternalASubnet:
+    Description: The ID of the External A subnet
+    Value: !Ref ExternalA
+    Export:
+      Name: !Sub "${AWS::StackName}-ExternalASubnet"
+      
+  #This makes the External B subnet ID available to other stacks
+  ExternalBSubnet:
+    Description: The ID of the External B subnet
+    Value: !Ref ExternalB
+    Export:
+      Name: !Sub "${AWS::StackName}-ExternalBSubnet"
+      
+  #This makes the UnrestrictedNonSslSg security group Group ID available to other stacks
+  UnrestrictedNonSslSgGroupId:
+    Description: The Group ID of the UnrestrictedNonSslSg security group
+    Value: !GetAtt [UnrestrictedNonSslSg, GroupId]
+    Export:
+      Name: !Sub "${AWS::StackName}-UnrestrictedNonSslSg"

@@ -1,0 +1,151 @@
+#This template defines a CloudFormation stack that manages two pipelines
+#related to the lab named "Automate Infrastructure with CloudFormation".
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  Defines two Continuous Deployment (CD) pipelines that will manage a simple
+  cloud-based infrastructure environment.  Each of these pipelines connect
+  git repositories hosted in AWS CodeCommit to AWS CloudFormation stacks.
+  The first pipeline manages core web infrastructure elements and the second
+  pipeline manages web servers.
+Resources:
+  #This is an s3 bucket used in support of the two pipelines.  This is largely
+  #a behind-the-scenes function, but is explicity included in the configuration
+  #of the pipeline.
+  ArtifactBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      
+  ##################################################################################
+  #                              Core Infrastructure                               #
+  ##################################################################################
+  #This is the git repository for the core_infrastructure artifacts.
+  #The choice of CodeCommit as opposed to other git hosting services
+  #is primarily a function of keeping the lab self contained within
+  #the AWS environment, and that we have the ability within this
+  #environment to create/destroy repositories.
+  #
+  #This choice does come with the requirement that the IAM user for
+  #the lab will need to have git credentials assigned, but the issue
+  #of credentials would be a factor in this context regardless of the
+  #git hosting service selected.
+  CoreInfrastructureRepo:
+    Type: "AWS::CodeCommit::Repository"
+    Properties:
+      RepositoryDescription: Repository dedicated to the core infrastructure CloudFormation files.
+      RepositoryName: core_infrastructure
+
+  #This is the pipeline that monitors the git repository for the
+  #core infrastructure files and applies changes to the CloudFormation
+  #system.
+  CoreInfrastructurePipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Name: core-infrastructure-pipeline
+      RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/pipeline/pipeline-role"
+      Stages:
+        -
+          Name: Source
+          Actions:
+            -
+              Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1
+                Provider: CodeCommit
+              Configuration:
+                PollForSourceChanges: true
+                BranchName: master
+                RepositoryName: core_infrastructure
+              OutputArtifacts:
+                -
+                  Name: core-infrastructure
+              RunOrder: 1
+        -
+          Name: Deploy
+          Actions:
+            -
+              Name: cloudformation-deploy
+              InputArtifacts:
+                -
+                  Name: core-infrastructure
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CloudFormation
+              Configuration:
+                StackName: core-infrastructure
+                ActionMode: CREATE_UPDATE
+                RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/pipeline/pipeline-role"
+                TemplatePath: "core-infrastructure::core_infrastructure.yml"
+              RunOrder: 1
+
+  ##################################################################################
+  #                                  Web Servers                                   #
+  ##################################################################################
+  WebInfrastructureRepo:
+    Type: "AWS::CodeCommit::Repository"
+    Properties:
+      RepositoryDescription: Repository dedicated to the web infrastructure CloudFormation files.
+      RepositoryName: web_infrastructure
+
+  #This is the pipeline that monitors the git repository for the
+  #web infrastructure files and applies changes to the CloudFormation
+  #system.
+  WebInfrastructurePipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Name: web-infrastructure-pipeline
+      RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/pipeline/pipeline-role"
+      Stages:
+        -
+          Name: Source
+          Actions:
+            -
+              Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1
+                Provider: CodeCommit
+              Configuration:
+                PollForSourceChanges: true
+                BranchName: master
+                RepositoryName: web_infrastructure
+              OutputArtifacts:
+                -
+                  Name: web-infrastructure
+              RunOrder: 1
+        -
+          Name: Deploy
+          Actions:
+            -
+              Name: cloudformation-deploy
+              InputArtifacts:
+                -
+                  Name: web-infrastructure
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CloudFormation
+              Configuration:
+                StackName: web-infrastructure
+                ActionMode: CREATE_UPDATE
+                RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/pipeline/pipeline-role"
+                TemplateConfiguration: "web-infrastructure::parameters.json"
+                TemplatePath: "web-infrastructure::web_infrastructure.yml"
+              RunOrder: 1
