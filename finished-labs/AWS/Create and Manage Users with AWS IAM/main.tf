@@ -1,10 +1,10 @@
 
+
+
 # Variable used in the creation of the `lab_vpc_internet_access` resource
 variable "cidr_block" {
     default = "0.0.0.0/0"
 }
-
-
 
 
 variable "region" {
@@ -60,8 +60,23 @@ resource "aws_subnet" "lab_vpc_subnet_a" {
 }
 
 
+data "aws_ami" "ubuntu" {
+    most_recent = true
+    filter {
+        name = "name"
+        values = ["ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-*"]
+    }
+    filter {
+        name = "virtualization-type"
+        values = ["hvm"]
+    }
+    owners = ["099720109477"]
+}
+
+
+
 resource "aws_instance" "ec2-test" {
-    ami                          = "ami-07ebfd5b3428b6f4d"
+    ami                          = data.aws_ami.ubuntu.id
     associate_public_ip_address  = true
     disable_api_termination      = false
     ebs_optimized                = false
