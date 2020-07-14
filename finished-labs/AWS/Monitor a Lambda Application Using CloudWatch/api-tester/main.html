@@ -1,0 +1,373 @@
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js"></script>
+    <style>
+        /*
+ * Globals
+ */
+
+        /* Links */
+        a,
+        a:focus,
+        a:hover {
+            color: #fff;
+        }
+
+        /* Custom default button */
+        .btn-default,
+        .btn-default:hover,
+        .btn-default:focus {
+            color: #333;
+            text-shadow: none;
+            /* Prevent inheritence from `body` */
+            background-color: #fff;
+            border: 1px solid #fff;
+        }
+
+
+        /*
+ * Base structure
+ */
+
+        html,
+        body {
+            height: 100%;
+            background-color: #fff;
+        }
+
+        body {
+            color: #fff;
+            text-align: center;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, .5);
+        }
+
+        /* Extra markup and styles for table-esque vertical and horizontal centering */
+        .site-wrapper {
+            display: table;
+            width: 100%;
+            background-color: #333;
+            height: 100%;
+            min-height: 100%;
+            overflow: auto;
+        }
+
+        .site-wrapper-inner {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .cover-container {
+            margin-right: auto;
+            margin-left: auto;
+        }
+
+        /* Padding for spacing */
+        .inner {
+            padding: 30px;
+        }
+
+
+        /*
+ * Header
+ */
+        .masthead-brand {
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .masthead-nav>li {
+            display: inline-block;
+        }
+
+        .masthead-nav>li+li {
+            margin-left: 20px;
+        }
+
+        .masthead-nav>li>a {
+            padding-right: 0;
+            padding-left: 0;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            /* IE8 proofing */
+            color: rgba(255, 255, 255, .75);
+            border-bottom: 2px solid transparent;
+        }
+
+        .masthead-nav>li>a:hover,
+        .masthead-nav>li>a:focus {
+            background-color: transparent;
+            border-bottom-color: #a9a9a9;
+            border-bottom-color: rgba(255, 255, 255, .25);
+        }
+
+        .masthead-nav>.active>a,
+        .masthead-nav>.active>a:hover,
+        .masthead-nav>.active>a:focus {
+            color: #fff;
+            border-bottom-color: #fff;
+        }
+
+        @media (min-width: 768px) {
+            .masthead-brand {
+                float: left;
+            }
+
+            .masthead-nav {
+                float: right;
+            }
+        }
+
+
+        /*
+ * Cover
+ */
+
+        .cover {
+            padding: 0 20px;
+        }
+
+        .cover .btn-lg {
+            padding: 10px 20px;
+            font-weight: bold;
+        }
+
+        /*
+ * Affix and center
+ */
+
+        @media (min-width: 768px) {
+
+            /* Pull out the header and footer */
+            .masthead {
+                position: fixed;
+                top: 0;
+            }
+
+            /* Start the vertical centering */
+            .site-wrapper-inner {
+                vertical-align: middle;
+            }
+
+        }
+
+        pre {
+            text-align: left;
+            outline: 1px solid #ccc;
+            padding: 5px;
+            margin: 5px;
+            background: white;
+        }
+
+        .string {
+            color: green;
+        }
+
+        .number {
+            color: darkorange;
+        }
+
+        .boolean {
+            color: blue;
+        }
+
+        .null {
+            color: magenta;
+        }
+
+        .key {
+            color: red;
+        }
+    </style>
+</head>
+<script type="text/javascript">
+    var autoGenerateInterval = null;
+
+    let config = {
+
+    }
+    function syntaxHighlight(json) {
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'key';
+                } else {
+                    cls = 'string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'boolean';
+            } else if (/null/.test(match)) {
+                cls = 'null';
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+
+    function setOutput(data) {
+        document.getElementById('output').innerHTML = ''
+        document.getElementById('output').appendChild(document.createElement('pre')).innerHTML = syntaxHighlight(JSON.stringify(data, undefined, 4));;
+    }
+    function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function getUrl(){
+    var url= localStorage.getItem('api_url')
+    if(!url) {
+        alert('API url not set')
+        return null
+    }
+    return url;
+}
+    window.onload = function () {
+        document.getElementById('api-url-display').innerHTML=localStorage.getItem('api_url')||'';
+        document.getElementById('set-api-url').addEventListener("click", function () {
+            var url = document.getElementById('api-url-input').value
+            if (!url) return alert('Plese specify a url');
+            localStorage.setItem('api_url',url);
+            document.getElementById('api-url-display').innerHTML=url
+
+        });
+
+        document.getElementById('get-by-id').addEventListener("click", function () {
+            var id = document.getElementById('getbyid-id').value
+            if (!id) return alert('Plese specify an id');
+            axios.get(`${getUrl()}/${id}`, config).then(result => {
+                setOutput(result.data)
+            }).catch(err => {
+                setOutput(err)
+            })
+        });
+        document.getElementById('get-all').addEventListener("click", function () {
+
+            axios.get(`${getUrl()}`, config).then(result => {
+                setOutput(result.data)
+            }).catch(err => {
+                setOutput(err)
+            })
+        });
+        document.getElementById('add-update').addEventListener("submit", function (e) {
+            e.preventDefault();
+            var id = document.getElementById('item-id').value;
+            var name = document.getElementById('item-name').value;
+            axios.post(`${getUrl()}`, { "id": id, "name": name },{headers:{"Content-Type":"application/json"}}).then(result => {
+                setOutput(result.data)
+            }).catch(err => {
+                setOutput(err)
+            })
+        });
+        var autogenenrateButton=document.getElementById('autogenerate-data')
+        autogenenrateButton.addEventListener("click", function (e) {
+            if(autoGenerateInterval){
+                autogenenrateButton.innerHTML="Start autogenerating data"
+                clearInterval(autoGenerateInterval)
+                autoGenerateInterval=null
+            }
+           else{
+            autogenenrateButton.innerHTML="Stop autogenerating data"
+            autoGenerateInterval = setInterval(()=>{
+                axios.post(`${getUrl()}`, { "id": getRandomInt(1,9999999999).toString(), "name": Math.random().toString(36).substring(7) }).then(result => {
+                setOutput(result.data)
+            }).catch(err => {
+                setOutput(err)
+            })
+            },1000)
+           }
+           
+        });
+        
+    }
+</script>
+
+<body>
+    <div class="site-wrapper">
+
+        <div class="site-wrapper-inner">
+
+            <div class="container">
+
+                <div class="masthead clearfix">
+                    <div class="container inner">
+                        <h3 class="masthead-brand">Monitoring Lambda Applications</h3>
+
+                    </div>
+                </div>
+
+                <div class="inner cover">
+                    <label>API URL: <span id="api-url-display"></span></label>
+                            <div class="input-group mb-3">
+                                <input id="api-url-input" type="text" class="form-control" placeholder="Enter URL"
+                                    aria-describedby="basic-addon2">
+                                <div class="input-group-append">
+                                    <button id="set-api-url" class="btn btn-outline-secondary" type="button">Update</button>
+                                  
+                                </div>
+                            </div>
+                            
+                            <br>
+                            <hr>
+                    <div class="row">
+                        <div class="col-6">
+                            
+                            <label>GET</label>
+                            <div class="input-group mb-3">
+                                <input id="getbyid-id" type="text" class="form-control" placeholder="Enter Id"
+                                    aria-describedby="basic-addon2">
+                                <div class="input-group-append">
+                                    <button id="get-by-id" class="btn btn-outline-secondary" type="button">GET</button>
+                                    <button id="get-all" class="btn btn-outline-secondary" type="button">GET
+                                        ALL</button>
+                                </div>
+                            </div>
+                            <hr>
+                            <label>Create</label>
+                                
+                            </button>
+                            <form style="text-align: left;" id="add-update">
+                                <div class="form-group">
+                                    <label for="item-id">Id</label>
+                                    <input type="text" class="form-control" id="item-id">
+                                </div>
+                                <div class="form-group">
+                                    <label for="item-name">Name</label>
+                                    <input type="text" class="form-control" id="item-name">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Submit</button>
+                                <button type="button" id="autogenerate-data" class="btn btn-primary">Start Auto Data Generation
+
+                            </form>
+                        </div>
+                        <div class="col-6">
+                            <label>Output</label>
+                            <div style="max-height:70vh;overflow:auto" id="output" style="background-color: white;">
+
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</body>
+
+</html>
