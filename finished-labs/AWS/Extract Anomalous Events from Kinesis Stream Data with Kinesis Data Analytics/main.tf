@@ -124,8 +124,16 @@ resource "aws_lambda_function" "stock_trades_producer" {
   }
 }
 
+resource "random_string" "bucket_name" {
+  length  = 8
+  upper   = false
+  lower   = true
+  number  = true
+  special = false
+}
+
 resource "aws_s3_bucket" "anomalous_stock_trades" {
-  bucket = "anomalous-stock-trades"
+  bucket = "anomalous-stock-trades-${random_string.bucket_name.result}"
   acl    = "private"
 }
 
