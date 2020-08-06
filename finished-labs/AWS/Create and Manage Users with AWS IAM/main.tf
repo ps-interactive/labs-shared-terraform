@@ -89,20 +89,12 @@ resource "aws_instance" "ec2-test" {
     private_ip                   = "172.31.37.38"
     subnet_id                    = "${aws_subnet.lab_vpc_subnet_a.id}"
 
-    root_block_device {
-        delete_on_termination = true
-        encrypted             = false
-        iops                  = 100
-        volume_size           = 8
-        volume_type           = "gp2"
-    }
 
     timeouts {}
 }
 
 resource "aws_s3_bucket" "s3-test" {
     bucket                      = "sensitive-globo-bucket-${random_string.version.result}"
-    region                      = var.region
     request_payer               = "BucketOwner"
     tags                        = {}
 
