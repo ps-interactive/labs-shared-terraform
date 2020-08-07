@@ -16,15 +16,13 @@ resource "aws_cloudformation_stack" "lab_ide" {
     "LabIDE": {
       "Type": "AWS::Cloud9::EnvironmentEC2",
       "Properties": {
-        "InstanceType": "t2.nano",
-        "Name": "Lab IDE",
+        "InstanceType": "t3.small",
+        "Name": "c9-lab-ide-${random_string.ide_id.result}",
         "Description": "Create and Manage EC2 Instances Using the JavaScript SDK",
-        "Repositories": [
-          {
-            "PathComponent": "app",
-            "RepositoryUrl": "https://github.com/ps-interactive/aws-ec2-js-sdk"
-          }
-        ]
+        "Repositories": [{
+          "PathComponent": "app",
+          "RepositoryUrl": "https://github.com/ps-interactive/aws-ec2-js-sdk"
+        }]
       }
     }
   }
