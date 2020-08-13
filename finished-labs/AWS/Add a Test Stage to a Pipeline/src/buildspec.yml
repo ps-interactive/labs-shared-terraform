@@ -1,0 +1,9 @@
+version: 0.2
+
+run-as: "root"
+
+phases:
+  build:
+    run-as: "root"
+    commands:
+      - "curl $''TEST_URL | grep Pluralsight"
