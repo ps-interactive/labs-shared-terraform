@@ -25,7 +25,7 @@ resource "aws_iam_role" "iam_for_lambda" {
       "Sid": ""
     }
   ]
-} 
+}
 EOF
 }
 
@@ -83,7 +83,7 @@ resource "aws_cloudformation_stack" "lab_ide_stack" {
       "LabIDE": {
         "Type": "AWS::Cloud9::EnvironmentEC2",
         "Properties": {
-          "InstanceType": "t2.nano",
+          "InstanceType": "t3.small",
           "Name": "PS Labs Code ${random_string.stack_id.result}",
           "Description": "Send Notifications with AWS SNS Using the JavaScript SDK",
           "Repositories": [
