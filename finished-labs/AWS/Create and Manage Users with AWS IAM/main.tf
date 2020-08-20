@@ -12,6 +12,7 @@ default = "us-west-2"
 }
 
 provider "aws" {
+  version = "~> 2.0"
   region     = var.region
 }
 
@@ -87,7 +88,7 @@ resource "aws_instance" "ec2-test" {
     ipv6_addresses               = []
     monitoring                   = false
     private_ip                   = "172.31.37.38"
-    subnet_id                    = "${aws_subnet.lab_vpc_subnet_a.id}"
+    subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
 
 
     timeouts {}
