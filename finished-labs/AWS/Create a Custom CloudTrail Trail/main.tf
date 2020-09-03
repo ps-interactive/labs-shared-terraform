@@ -1,6 +1,7 @@
 ### PROVIDER ###
 provider "aws" {
-  region     = "us-west-2"
+  region = "us-west-2"
+  version = "~> 3.4"
   # profile    = "ps"
 }
 
