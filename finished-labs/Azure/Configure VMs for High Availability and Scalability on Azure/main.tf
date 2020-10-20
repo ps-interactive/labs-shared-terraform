@@ -141,8 +141,8 @@ resource "azurerm_linux_virtual_machine" "ps-prod-app1-vm02" {
   resource_group_name             = var.resource_group_name
   location                        = var.location
   size                            = "Standard_DS1_v2"
-  admin_username                  = "ps-admin"
-  admin_password                  = "P@ssw0rd1234!"
+  admin_username                  = "****" # replace with an actual vm username
+  admin_password                  = "****" # replace with an actual vm password
   custom_data = base64encode(data.template_file.linux-vm-cloud-init.rendered)
   disable_password_authentication = false
   network_interface_ids = [
