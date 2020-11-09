@@ -67,8 +67,8 @@ resource "azurerm_linux_virtual_machine" "_" {
   name                            = "vm${count.index}"
   size                            = "Standard_A1_v2"
   network_interface_ids           = [azurerm_network_interface._[count.index].id]
-  admin_username                  = "globomantics"
-  admin_password                  = "Password123"
+  admin_username                  = #insert username
+  admin_password                  = #insert password
   disable_password_authentication = false
   resource_group_name             = var.resource_group_name
   location                        = var.location
