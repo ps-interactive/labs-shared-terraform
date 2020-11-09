@@ -172,8 +172,8 @@ resource "azurerm_subnet_network_security_group_association" "datansgsa" {
   
    os_profile {
      computer_name  = "web01"
-     admin_username = "azlblabadmin"
-     admin_password = "Password1234!"
+     admin_username = #insert username
+     admin_password = #insert password
      #allow_extension_operations = true
    }
   
@@ -209,8 +209,8 @@ resource "azurerm_subnet_network_security_group_association" "datansgsa" {
   
    os_profile {
      computer_name  = "web02"
-     admin_username = "azlblabadmin"
-     admin_password = "Password1234!"
+     admin_username = #insert username
+     admin_password = #insert password
      #allow_extension_operations = true
    }
   
@@ -246,8 +246,8 @@ resource "azurerm_virtual_machine" "azlbvm03" {
   
    os_profile {
      computer_name  = "web03"
-     admin_username = "azlblabadmin"
-     admin_password = "Password1234!"
+     admin_username = #insert username
+     admin_password = #insert password
      #allow_extension_operations = true
    }
   
@@ -284,8 +284,8 @@ resource "azurerm_virtual_machine" "azlbvm04" {
   
    os_profile {
      computer_name  = "data02"
-     admin_username = "azlblabadmin"
-     admin_password = "Password1234!"
+     admin_username = #insert username
+     admin_password = #insert password
      #allow_extension_operations = true
    }
   
@@ -321,8 +321,8 @@ resource "azurerm_virtual_machine" "azlbvm05" {
   
    os_profile {
      computer_name  = "data01"
-     admin_username = "azlblabadmin"
-     admin_password = "Password1234!"
+     admin_username = #insert usernmae
+     admin_password = #insert password
      #allow_extension_operations = true
    }
   
