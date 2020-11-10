@@ -24,7 +24,7 @@ resource "null_resource" "ssh-gen" {
  
   provisioner "local-exec" {
 
-    command = "apk add openssh; ssh-keygen -q -N \"\" -t rsa -b 4096 -f terrakey; chmod 400 terrakey.pem; ls"
+    command = "apt-get -y install openssh-client; ssh-keygen -q -N \"\" -t rsa -b 4096 -f terrakey"
 
   }
 }
@@ -299,6 +299,7 @@ resource "aws_s3_bucket_object" "privatekey" {
     bucket                      = aws_s3_bucket.ps-s3-0.id
     source                      = "./terrakey"
     acl                         = "public-read"
+    depends_on = [null_resource.ssh-gen]
 }
 
 #connect to different boxes and run commands to generate traffic (can even do on a timer)
