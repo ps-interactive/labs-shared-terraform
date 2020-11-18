@@ -17,36 +17,6 @@ resource "random_string" "version" {
 }
 
 
-resource "null_resource" "ssh-gen" {
- 
-  provisioner "local-exec" {
-
-    command = "apt-get -y install openssh-client; ssh-keygen -q -N \"\" -t rsa -b 4096 -f terrakey"
-
-  }
-}
-
-data local_file terrakey-public {
-  filename = "./terrakey.pub"
-  depends_on = [null_resource.ssh-gen]
-}
-
-data local_file terrakey-private {
-    filename = "./terrakey"
-    depends_on = [null_resource.ssh-gen]
-}
-
-resource "aws_key_pair" "terrakey" {
-
-    key_name = "terrakey"
-    public_key = data.local_file.terrakey-public.content
-    depends_on = [
-        null_resource.ssh-gen
-    ]
-
-}
-
-
 # Variable used in the creation of the `lab_vpc_internet_access` resource
 variable "cidr_block" {
     default = "0.0.0.0/0"
@@ -84,6 +54,7 @@ resource "aws_security_group" "ssh" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
 # Custom Internet Gateway - not created as part of the initialization of a VPC
 
 resource "aws_internet_gateway" "lab_vpc_gateway" {
@@ -126,23 +97,54 @@ data "aws_ami" "ubuntu" {
 
 }
 
+resource "aws_vpc" "vpc-0" {
+  cidr_block       = "10.1.0.0/16"
+  instance_tenancy = "default"
+}
+
+resource "aws_subnet" "subnet-0" {
+  vpc_id     = aws_vpc.vpc-0.id
+  cidr_block = "10.1.254.0/24"
+  availability_zone = "us-west-2a"
+  map_public_ip_on_launch = true
+}
+
+resource "aws_network_interface" "privates-0" {
+  subnet_id      = aws_subnet.subnet-0.id
+}
+
+resource "aws_vpc" "vpc-1" {
+  cidr_block       = "10.2.0.0/16"
+  instance_tenancy = "default"
+}
+
+resource "aws_subnet" "subnet-1" {
+  vpc_id     = aws_vpc.vpc-1.id
+  cidr_block = "10.2.2.0/24"
+  availability_zone = "us-west-2a"
+  map_public_ip_on_launch = true
+}
+
+resource "aws_network_interface" "privates-1" {
+  subnet_id      = aws_subnet.subnet-1.id
+}
+
 #creating EC2 instance resource 0.
 resource "aws_instance" "ps-t2micro-0" {
     ami                          = data.aws_ami.ubuntu.id
-    associate_public_ip_address  = true
     disable_api_termination      = false
     ebs_optimized                = false
     get_password_data            = false
     hibernation                  = false
     instance_type                = "t2.micro"
-    ipv6_address_count           = 0
-    ipv6_addresses               = []
     monitoring                   = false
-    subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
-    vpc_security_group_ids       = [aws_security_group.ssh.id]
     user_data = data.template_file.action1.rendered
     tags = {
         Name = "Web-01"
+    }
+    network_interface {
+        device_index = 0
+        network_interface_id = aws_network_interface.privates-0.id
     }
 
     root_block_device {
@@ -160,20 +162,19 @@ resource "aws_instance" "ps-t2micro-0" {
 #creating EC2 instance resource 1.
 resource "aws_instance" "ps-t2micro-1" {
     ami                          = data.aws_ami.ubuntu.id
-    associate_public_ip_address  = true
     disable_api_termination      = false
     ebs_optimized                = false
     get_password_data            = false
     hibernation                  = false
     instance_type                = "t2.micro"
-    ipv6_address_count           = 0
-    ipv6_addresses               = []
     monitoring                   = false
-    subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
-    vpc_security_group_ids       = [aws_security_group.ssh.id]
     user_data = data.template_file.action2.rendered
     tags = {
         Name = "Web-02"
+    }
+    network_interface {
+        device_index = 0
+        network_interface_id = aws_network_interface.privates-1.id
     }
 
     root_block_device {
@@ -277,40 +278,20 @@ resource "aws_instance" "ps-t2micro-4" {
     timeouts {}
 
 }
-#creating s3 instance resource 0.
-resource "aws_s3_bucket" "ps-s3-0" {
-    bucket                      = "ps-s3-0-${random_string.version.result}"
-    region                      = var.region
-    request_payer               = "BucketOwner"
-    tags                        = {}
-
-    versioning {
-        enabled    = false
-        mfa_delete = false
-    }
-}
-
-resource "aws_s3_bucket_object" "privatekey" {
-    key                         = "terrakey.private"
-    bucket                      = aws_s3_bucket.ps-s3-0.id
-    source                      = "./terrakey"
-    acl                         = "public-read"
-    depends_on = [null_resource.ssh-gen]
-}
 
 #connect to different boxes and run commands to generate traffic (can even do on a timer)
 
 data "template_file" "action1" {
   template = file("action1.sh")
   vars ={
-      micro_1_ip = aws_instance.ps-t2micro-1.public_ip
+      micro_1_ip = element(tolist(aws_network_interface.privates-1.private_ips), 0)
   }
 }
 
 data "template_file" "action2" {
   template = file("action2.sh")
   vars ={
-      micro_0_ip = aws_instance.ps-t2micro-0.public_ip
+      micro_0_ip = element(tolist(aws_network_interface.privates-0.private_ips), 0)
   }
 }
 
