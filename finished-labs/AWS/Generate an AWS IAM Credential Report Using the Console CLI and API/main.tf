@@ -84,40 +84,6 @@ data "aws_ami" "amazon_linux_v2" {
 }
 
 ###############################
-# KEYPAIR for alternate access
-###############################
-
-#replace provisioner and provide key file instead
-resource "null_resource" "ssh-gen" {
- 
-  provisioner "local-exec" {
-    #command = "apk add openssh; ssh-keygen -q -N \"\" -t rsa -b 4096 -f terrakey; chmod 400 terrakey..pub; ls"
-    command = "echo using provided key files"
-  }
-}
-data local_file terrakey-public {
-  filename = "./src/lab-ec2.pub"
-  depends_on = [null_resource.ssh-gen]
-}
-
-data local_file terrakey-private {
-    filename = "./src/lab-ec2.key"
-    depends_on = [null_resource.ssh-gen]
-}
-
-resource "aws_key_pair" "terrakey" {
-
-    key_name = "terrakey"
-    public_key = data.local_file.terrakey-public.content
-    depends_on = [
-        null_resource.ssh-gen
-    ]
-
-}
-
-
-
-###############################
 # SECURITY
 ###############################
 
@@ -159,15 +125,12 @@ resource "aws_instance" "lab-ec2" {
     ami                          = data.aws_ami.amazon_linux_v2.id
     instance_type                = "t2.small"
     monitoring                   = false
-    # subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
     vpc_security_group_ids       = [aws_security_group.ssh-access.id]
     user_data                    = data.cloudinit_config.install-requirements-config-script.rendered
-    key_name                     = aws_key_pair.terrakey.key_name
-    # iam_instance_profile = aws_iam_instance_profile.ssm-instance-profile.id
 
     tags = {
-    Name = "Lab-VM"
-  }
+      Name = "Lab-VM"
+    }
 }
 
 
@@ -204,13 +167,3 @@ output "public_ip_out" {
 output "public_dns_out" {
   value = aws_instance.lab-ec2.*.public_dns
 }
-# output "password_out" {
-#   value = aws_instance.lab-ec2.*.password_data
-# }
-output "fingerprint_out" {
-  value = aws_key_pair.terrakey.fingerprint
-}
-# output "ssh_command_out" {
-#   value = format("%s@%s -i %s","ec2-user",aws_instance.lab-ec2.*.public_dns,  data.terrakey-private.filename )
-# }
-#  ssh ec23-user@ec2-35-164-221-205.us-west-2.compute.amazonaws.com -i .\src\lab-ec2.key
