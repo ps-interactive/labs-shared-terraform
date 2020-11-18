@@ -1,14 +1,11 @@
-
 variable "region" {
     default = "us-west-2"
-    }
+}
 
 provider "aws" {
     version = "~> 2.0"
     region  = var.region
-
 }
-
 
 # Requires the Random Provider - it is installed by terraform init
 resource "random_string" "version" {
@@ -28,7 +25,6 @@ resource "null_resource" "ssh-gen" {
 
   }
 }
-
 
 data local_file terrakey-public {
   filename = "./terrakey.pub"
@@ -143,8 +139,8 @@ resource "aws_instance" "ps-t2micro-0" {
     ipv6_addresses               = []
     monitoring                   = false
     subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
-    key_name                     = aws_key_pair.terrakey.key_name
     vpc_security_group_ids       = [aws_security_group.ssh.id]
+    user_data = data.template_file.action1.rendered
     tags = {
         Name = "Web-01"
     }
@@ -174,8 +170,8 @@ resource "aws_instance" "ps-t2micro-1" {
     ipv6_addresses               = []
     monitoring                   = false
     subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
-    key_name                     = aws_key_pair.terrakey.key_name
     vpc_security_group_ids       = [aws_security_group.ssh.id]
+    user_data = data.template_file.action2.rendered
     tags = {
         Name = "Web-02"
     }
@@ -204,8 +200,8 @@ resource "aws_instance" "ps-t2micro-2" {
     ipv6_addresses               = []
     monitoring                   = false
     subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
-    key_name                     = aws_key_pair.terrakey.key_name
     vpc_security_group_ids       = [aws_security_group.ssh.id]
+    user_data = data.template_file.action3.rendered
     tags = {
         Name = "App-01"
     }
@@ -234,8 +230,8 @@ resource "aws_instance" "ps-t2micro-3" {
     ipv6_addresses               = []
     monitoring                   = false
     subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
-    key_name                     = aws_key_pair.terrakey.key_name
     vpc_security_group_ids       = [aws_security_group.ssh.id]
+    user_data = data.template_file.action4.rendered
     tags = {
         Name = "DB-01"
     }
@@ -264,8 +260,8 @@ resource "aws_instance" "ps-t2micro-4" {
     ipv6_addresses               = []
     monitoring                   = false
     subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
-    key_name                     = aws_key_pair.terrakey.key_name
     vpc_security_group_ids       = [aws_security_group.ssh.id]
+    user_data = data.template_file.action5.rendered
     tags = {
         Name = "DB-02"
     }
@@ -304,129 +300,29 @@ resource "aws_s3_bucket_object" "privatekey" {
 
 #connect to different boxes and run commands to generate traffic (can even do on a timer)
 
-resource "null_resource" "action1" {
-    triggers = {
-        public_ip = aws_instance.ps-t2micro-0.public_ip
-    }
-
-    provisioner "remote-exec"{
-        inline = [
-            "echo \"success1\">> ~/peaceinourtime",
-            "echo \"${aws_instance.ps-t2micro-1.public_ip}\">> ~/peaceinourtime2",
-            "sudo sed '$a*/1 * * * * root nc ${aws_instance.ps-t2micro-1.public_ip} 22 -w 60' /etc/crontab | tee /tmp/cron.tab",
-            "sudo mv /tmp/cron.tab /etc/crontab",
-            "sudo chown root:root /etc/crontab",
-            "sudo chmod 600 /etc/crontab",
-            "sudo systemctl restart cron"
-        ]
-        connection {
-            type   = "ssh"
-            host = aws_instance.ps-t2micro-0.public_ip
-            user = "ubuntu"
-            private_key = data.local_file.terrakey-private.content
-        }
-    }
+data "template_file" "action1" {
+  template = file("action1.sh")
+  vars ={
+      micro_1_ip = aws_instance.ps-t2micro-1.public_ip
+  }
 }
 
-resource "null_resource" "action2" {
-    triggers = {
-        public_ip = aws_instance.ps-t2micro-1.public_ip
-    }
-
-    provisioner "remote-exec"{
-        inline = [
-            "echo \"success1\">> ~/peaceinourtime",
-            "echo \"${aws_instance.ps-t2micro-0.public_ip}\">> ~/peaceinourtime2",
-            "sudo sed '$a*/1 * * * * root nc ${aws_instance.ps-t2micro-0.public_ip} 22 -w 60' /etc/crontab | tee /tmp/cron.tab",
-            "sudo mv /tmp/cron.tab /etc/crontab",
-            "sudo chown root:root /etc/crontab",
-            "sudo chmod 600 /etc/crontab",
-            "sudo systemctl restart cron"
-        ]
-        connection {
-            type   = "ssh"
-            host = aws_instance.ps-t2micro-1.public_ip
-            user = "ubuntu"
-            private_key = data.local_file.terrakey-private.content
-        }
-    }
+data "template_file" "action2" {
+  template = file("action2.sh")
+  vars ={
+      micro_0_ip = aws_instance.ps-t2micro-0.public_ip
+  }
 }
 
 #app server cpu load 
-
-resource "null_resource" "action3" {
-    triggers = {
-        public_ip = aws_instance.ps-t2micro-2.public_ip
-    }
-
-    provisioner "remote-exec"{
-        inline = [
-            "echo \"success1\">> ~/peaceinourtime",
-            "sudo apt update",
-            "sudo apt -y install stress",
-            "sudo sed '$a*/1 * * * * root stress -t 60 --cpu 4' /etc/crontab | tee /tmp/cron.tab",
-            "sudo mv /tmp/cron.tab /etc/crontab",
-            "sudo chown root:root /etc/crontab",
-            "sudo chmod 600 /etc/crontab",
-            "sudo systemctl restart cron"
-        ]
-        connection {
-            type   = "ssh"
-            host = aws_instance.ps-t2micro-2.public_ip
-            user = "ubuntu"
-            private_key = data.local_file.terrakey-private.content
-        }
-    }
+data "template_file" "action3" {
+  template = file("action3.sh")
 }
 
-resource "null_resource" "action4" {
-    triggers = {
-        public_ip = aws_instance.ps-t2micro-3.public_ip
-    }
-
-    provisioner "remote-exec"{
-        inline = [
-            "echo \"success1\">> ~/peaceinourtime",
-            "sudo apt update",
-            "sudo apt -y install stress",
-            "sudo sed '$a*/1 * * * * root stress -t 60 -d 8 --hdd-bytes 300B' /etc/crontab | tee /tmp/cron.tab",
-            "sudo sed '$a*/5 * * * * root stress -t 120 -d 20 --hdd-bytes 3000B' /tmp/cron.tab | tee /tmp/cron.tab2",
-            "sudo mv /tmp/cron.tab2 /etc/crontab",
-            "sudo chown root:root /etc/crontab",
-            "sudo chmod 600 /etc/crontab",
-            "sudo systemctl restart cron"
-
-        ]
-        connection {
-            type   = "ssh"
-            host = aws_instance.ps-t2micro-3.public_ip
-            user = "ubuntu"
-            private_key = data.local_file.terrakey-private.content
-        }
-    }
+data "template_file" "action4" {
+  template = file("action4.sh")
 }
 
-resource "null_resource" "action5" {
-    triggers = {
-        public_ip = aws_instance.ps-t2micro-4.public_ip
-    }
-
-    provisioner "remote-exec"{
-        inline = [
-            "echo \"success1\">> ~/peaceinourtime",
-            "sudo apt update",
-            "sudo apt -y install stress",
-            "sudo sed '$a*/1 * * * * root stress -t 60 -d 2 --hdd-bytes 300B' /etc/crontab | tee /tmp/cron.tab",
-            "sudo mv /tmp/cron.tab /etc/crontab",
-            "sudo chown root:root /etc/crontab",
-            "sudo chmod 600 /etc/crontab",
-            "sudo systemctl restart cron",
-        ]
-        connection {
-            type   = "ssh"
-            host = aws_instance.ps-t2micro-4.public_ip
-            user = "ubuntu"
-            private_key = data.local_file.terrakey-private.content
-        }
-    }
+data "template_file" "action5" {
+  template = file("action5.sh")
 }
