@@ -71,8 +71,8 @@ resource "aws_instance" "myfirstec2" {
 	vpc_security_group_ids = [aws_security_group.pluralsight.id]
 	user_data = <<-EOF
 		    #!/bin/bash
-     		    sudo yum update -y
-		    sudo easy_install pip
+            sudo yum update -y
+            sudo yum -y install python-pip
 		    sudo pip install boto
 		    sudo pip install testdata
 		    EOF	
