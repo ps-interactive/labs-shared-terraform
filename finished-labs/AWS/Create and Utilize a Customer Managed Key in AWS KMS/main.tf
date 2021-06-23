@@ -199,6 +199,24 @@ resource "aws_iam_policy" "my_finance_policy" {
       "Effect": "Allow",
       "Action": "s3:*",
       "Resource": "*"
+    },
+    {
+        "Effect": "Allow",
+        "Action": [
+            "kms:CreateAlias",
+            "kms:CreateKey",
+            "kms:DeleteAlias",
+            "kms:Describe*",
+            "kms:GenerateRandom",
+            "kms:Get*",
+            "kms:List*",
+            "kms:TagResource",
+            "kms:UntagResource",
+            "iam:ListGroups",
+            "iam:ListRoles",
+            "iam:ListUsers"
+        ],
+        "Resource": "*"
     }
   ]
 }
