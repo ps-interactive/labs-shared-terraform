@@ -3,12 +3,17 @@ provider "azurerm" {
   features {}
 }
 
-variable "resource_group_name" {}
-variable "location" {}
+variable "location" {
+  default = "eastus"
+}
+resource "azurerm_resource_group" "rg" {
+  name = "pluralsight-resource-group"
+  location = var.location
+}
 
 resource "random_id" "id" {
   keepers = {
-    resource_group = var.resource_group_name
+    resource_group = azurerm_resource_group.rg.name
   }
 
   byte_length = 2
@@ -16,7 +21,7 @@ resource "random_id" "id" {
 
 resource "azurerm_storage_account" "lab_storage_account" {
   name                     = "lab${random_id.id.hex}"
-  resource_group_name      = var.resource_group_name
+  resource_group_name      = azurerm_resource_group.rg.name
   location                 = var.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
@@ -77,12 +82,12 @@ resource "azurerm_virtual_network" "lab_vnet" {
   name                = "labVNet"
   address_space       = ["10.0.0.0/16"]
   location            = var.location
-  resource_group_name = var.resource_group_name
+  resource_group_name = azurerm_resource_group.rg.name
 }
 
 resource "azurerm_subnet" "lab_subnet" {
   name                 = "labSubnet"
-  resource_group_name  = var.resource_group_name
+  resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.lab_vnet.name
   address_prefixes     = ["10.0.1.0/24"]
 }
@@ -90,14 +95,14 @@ resource "azurerm_subnet" "lab_subnet" {
 resource "azurerm_public_ip" "lab_public_ip" {
   name                = "labPublicIP"
   location            = var.location
-  resource_group_name = var.resource_group_name
+  resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Dynamic"
 }
 
 resource "azurerm_network_security_group" "lab_security_group" {
   name                = "labSecurityGroup"
   location            = var.location
-  resource_group_name = var.resource_group_name
+  resource_group_name = azurerm_resource_group.rg.name
 
   security_rule {
     name                       = "SSH"
@@ -127,7 +132,7 @@ resource "azurerm_network_security_group" "lab_security_group" {
 resource "azurerm_network_interface" "lab_nic" {
   name                = "labNIC"
   location            = var.location
-  resource_group_name = var.resource_group_name
+  resource_group_name = azurerm_resource_group.rg.name
 
   ip_configuration {
     name                          = "labNicConfiguration"
