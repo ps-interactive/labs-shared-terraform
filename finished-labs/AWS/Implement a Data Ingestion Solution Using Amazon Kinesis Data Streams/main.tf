@@ -65,10 +65,42 @@ data "aws_ami" "amazon_linux_2" {
   owners = ["amazon"]
 }
 
+# [START] IAM role and instance role profile for SSM
+data "aws_iam_policy_document" "assume-role-policy-ec2" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "PluralsightRoleEC2InstanceBaseline" {
+  name = "PluralsightRoleEC2InstanceBaseline"
+  assume_role_policy = data.aws_iam_policy_document.assume-role-policy-ec2.json
+}
+
+data "aws_iam_policy" "AmazonSSMManagedInstanceCore" {
+  arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_role_policy_attachment" "PluralsightRoleEC2InstanceBaseline-AmazonSSMManagedInstanceCore" {
+  role       = aws_iam_role.PluralsightRoleEC2InstanceBaseline.name
+  policy_arn = data.aws_iam_policy.AmazonSSMManagedInstanceCore.arn
+}
+
+resource "aws_iam_instance_profile" "PluralsightRoleEC2InstanceBaseline" {
+  name  = "PluralsightRoleEC2InstanceBaseline"
+  role = aws_iam_role.PluralsightRoleEC2InstanceBaseline.name
+}
+# [END]
+
 resource "aws_instance" "myfirstec2" {
 	ami = data.aws_ami.amazon_linux_2.id
 	instance_type = "t2.micro"
 	vpc_security_group_ids = [aws_security_group.pluralsight.id]
+    iam_instance_profile = aws_iam_instance_profile.PluralsightRoleEC2InstanceBaseline.name
 	user_data = <<-EOF
 		    #!/bin/bash
             sudo yum update -y
