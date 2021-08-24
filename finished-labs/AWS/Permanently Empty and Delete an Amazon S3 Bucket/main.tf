@@ -1,17 +1,21 @@
-terraform {
-  required_providers {
-    aws = {
-      source = "hashicorp/aws"
-      version = "3.35.0"
-    }
-    random = {
-      source = "hashicorp/random"
-      version = "3.1.0"
-    }
-  }
+#terraform {
+#  required_providers {
+#    aws = {
+#      source = "hashicorp/aws"
+#      version = "3.35.0"
+#    }
+#    random = {
+#      source = "hashicorp/random"
+#      version = "3.1.0"
+#    }
+#  }
+#}
+
+provider "aws" {
+  version = "~> 2.0"
+  region  = "us-west-2"
 }
 
-provider "aws" {}
 provider "random" {}
 
 resource "random_uuid" "uuid" {}
