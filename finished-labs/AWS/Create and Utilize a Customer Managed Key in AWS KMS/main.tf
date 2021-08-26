@@ -9,6 +9,7 @@ resource "aws_iam_user" "Alice" {
     path = "/"
 }
 
+
 # Create Login with password encrypted with given pgp key
 resource "aws_iam_user_login_profile" "alice_login" {
   user = "Alice.Acme"
@@ -19,6 +20,7 @@ EOF
   password_length = 10
   depends_on = [aws_iam_user.Alice]
 }
+
 
 # Create user
 resource "aws_iam_user" "Sarah" {
@@ -54,52 +56,69 @@ EOF
   depends_on = [aws_iam_user.Max]
 }
 
-# gpg decrypt password and output to file
-resource "null_resource" "import-key-alice" {
-  provisioner "local-exec" {
-    command = "gpg --import src/learner-private.key && echo ${aws_iam_user_login_profile.alice_login.encrypted_password} | base64 -d | gpg -d -o learner-password.txt"
+variable "subnet_id" {
+    type = string
+    default = ""
+}
+# [END]
+
+# [START] AMI definitions
+data "aws_ami" "amazon-linux-2" {
+    most_recent = true
+    owners = ["amazon"]
+
+    filter {
+        name = "name"
+        values = ["amzn2-ami-hvm*"]
+    }
+}
+# [END]
+
+
+# [START] IAM role and instance role profile for SSM
+data "aws_iam_policy_document" "assume-role-policy-ec2" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
   }
 }
 
-# gpg decrypt password and output to file
-resource "null_resource" "import-key-sarah" {
-  provisioner "local-exec" {
-    command = "gpg --import src/learner-private.key && echo ${aws_iam_user_login_profile.sarah_login.encrypted_password} | base64 -d | gpg -d -o learner-password2.txt"
-  }
+resource "aws_iam_role" "PluralsightRoleEC2InstanceBaseline" {
+  name = "PluralsightRoleEC2InstanceBaseline"
+  assume_role_policy = data.aws_iam_policy_document.assume-role-policy-ec2.json
 }
 
-# gpg decrypt password and output to file
-resource "null_resource" "import-key-max" {
-  provisioner "local-exec" {
-    command = "gpg --import src/learner-private.key && echo ${aws_iam_user_login_profile.max_login.encrypted_password} | base64 -d | gpg -d -o learner-password3.txt"
-  }
+data "aws_iam_policy" "AmazonSSMManagedInstanceCore" {
+  arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-# Output password to console
-# terraform output password | base64 --decode | keybase pgp decrypt
-# output "password_alice" {
-#   value = "${aws_iam_user_login_profile.alice_login.encrypted_password}"
-# }
+data "aws_iam_policy" "S3Access" {
+  arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "PluralsightRoleEC2InstanceBaseline-AmazonSSMManagedInstanceCore" {
+  role       = aws_iam_role.PluralsightRoleEC2InstanceBaseline.name
+  policy_arn = data.aws_iam_policy.AmazonSSMManagedInstanceCore.arn
+}
+
+resource "aws_iam_role_policy_attachment" "PluralsightRoleEC2InstanceBaseline-S3" {
+  role       = aws_iam_role.PluralsightRoleEC2InstanceBaseline.name
+  policy_arn = data.aws_iam_policy.S3Access.arn
+}
+
+resource "aws_iam_instance_profile" "PluralsightRoleEC2InstanceBaseline" {
+  name  = "PluralsightRoleEC2InstanceBaseline"
+  role = aws_iam_role.PluralsightRoleEC2InstanceBaseline.name
+}
+# [END]
+
 
 # Create random id
 resource "random_uuid" "uuid" {
 
-}
-
-# Create local files with the decrypted password
-data local_file password-file-alice {
-  filename = "./learner-password.txt"
-  depends_on = [null_resource.import-key-alice]
-}
-
-data local_file password-file-sarah {
-  filename = "./learner-password2.txt"
-  depends_on = [null_resource.import-key-sarah]
-}
-
-data local_file password-file-max {
-  filename = "./learner-password3.txt"
-  depends_on = [null_resource.import-key-max]
 }
 
 # Create bucket
@@ -109,22 +128,49 @@ resource "aws_s3_bucket" "password_bucket" {
 }
 
 # Create separate files as objects in S3 bucket
-resource "aws_s3_bucket_object" "password_alice_file" {
+resource "aws_s3_bucket_object" "key_file" {
   bucket = aws_s3_bucket.password_bucket.id
-  key = "password_alice.txt"
-  content = join("\n", ["Alice.Acme", data.local_file.password-file-alice.content])
+  key = "learner-private.key"
+  source = "src/learner-private.key"
 }
 
-resource "aws_s3_bucket_object" "password_sarah_file" {
-  bucket = aws_s3_bucket.password_bucket.id
-  key = "password_sarah.txt"
-  content = join("\n", ["Sarah.Sign", data.local_file.password-file-sarah.content])
+resource "tls_private_key" "pki" {
+  algorithm   = "RSA"
+  rsa_bits = "4096"
 }
 
-resource "aws_s3_bucket_object" "password_max_file" {
-  bucket = aws_s3_bucket.password_bucket.id
-  key = "password_max.txt"
-  content = join("\n", ["Max.Tech", data.local_file.password-file-max.content])
+resource "aws_key_pair" "terrakey" {
+  key_name   = "lab-key"
+  public_key = "${tls_private_key.pki.public_key_openssh}"
+}
+
+resource "aws_instance" "Prod-Web-Instance-1" {
+    ami                          = data.aws_ami.amazon-linux-2.id
+    instance_type                = "t2.micro"
+    subnet_id                    = var.subnet_id
+    iam_instance_profile         = aws_iam_instance_profile.PluralsightRoleEC2InstanceBaseline.name
+    disable_api_termination      = false
+    ebs_optimized                = false
+    key_name                     = aws_key_pair.terrakey.key_name
+    user_data = <<EOF
+        #! /bin/bash
+        aws s3 cp s3://${aws_s3_bucket.password_bucket.bucket}/learner-private.key .
+        aws s3 rm s3://${aws_s3_bucket.password_bucket.bucket}/learner-private.key
+        gpg --import learner-private.key && echo ${aws_iam_user_login_profile.alice_login.encrypted_password} | base64 -d | gpg -d -o password_alice.txt
+        sed -i '1s/^/Alice.Acme\n/' password_alice.txt
+        aws s3 cp password_alice.txt s3://${aws_s3_bucket.password_bucket.bucket}/
+        echo ${aws_iam_user_login_profile.sarah_login.encrypted_password} | base64 -d | gpg -d -o password_sarah.txt
+        sed -i '1s/^/Sarah.Sign\n/' password_sarah.txt
+        aws s3 cp password_sarah.txt s3://${aws_s3_bucket.password_bucket.bucket}/
+        echo ${aws_iam_user_login_profile.max_login.encrypted_password} | base64 -d | gpg -d -o password_max.txt
+        sed -i '1s/^/Max.Tech\n/' password_max.txt
+        aws s3 cp password_max.txt s3://${aws_s3_bucket.password_bucket.bucket}/
+    EOF
+    depends_on = [aws_s3_bucket.password_bucket]
+
+    tags = {
+      Name = "Prod-Web-Instance-1"
+    }
 }
 
 # Create Groups
@@ -253,3 +299,13 @@ resource "aws_iam_group_policy_attachment" "developer-policy-attach" {
   group      = aws_iam_group.my_finance.name
   policy_arn = aws_iam_policy.my_finance_policy.arn
 }
+
+# output "alicepassword" {
+#   value = aws_iam_user_login_profile.alice_login.encrypted_password
+# }
+# output "sarahpassword" {
+#   value = aws_iam_user_login_profile.sarah_login.encrypted_password
+# }
+# output "maxpassword" {
+#   value = aws_iam_user_login_profile.max_login.encrypted_password
+# }
