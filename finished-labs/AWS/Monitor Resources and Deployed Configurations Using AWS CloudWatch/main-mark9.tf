@@ -1,16 +1,8 @@
-
-variable "region" {
-    default = "us-west-2"
-    }
-
 provider "aws" {
     version = "~> 2.0"
-    region  = var.region
-
+    region  = "us-west-2"
 }
 
-
-# Requires the Random Provider - it is installed by terraform init
 resource "random_string" "version" {
     length  = 8
     upper   = false
@@ -19,45 +11,21 @@ resource "random_string" "version" {
     special = false
 }
 
-
-resource "null_resource" "ssh-gen" {
- 
-  provisioner "local-exec" {
-
-    command = "apt-get -y install openssh-client; ssh-keygen -q -N \"\" -t rsa -b 4096 -f terrakey"
-
-  }
+resource "tls_private_key" "pki" {
+  algorithm = "RSA"
+  rsa_bits  = "4096"
 }
 
-
-data local_file terrakey-public {
-  filename = "./terrakey.pub"
-  depends_on = [null_resource.ssh-gen]
-}
-
-data local_file terrakey-private {
-    filename = "./terrakey"
-    depends_on = [null_resource.ssh-gen]
+resource "local_file" "pki" {
+  content         = tls_private_key.pki.private_key_pem
+  filename        = "./terrakey"
+  file_permission = "0600"
 }
 
 resource "aws_key_pair" "terrakey" {
-
     key_name = "terrakey"
-    public_key = data.local_file.terrakey-public.content
-    depends_on = [
-        null_resource.ssh-gen
-    ]
-
+    public_key = tls_private_key.pki.public_key_openssh
 }
-
-
-# Variable used in the creation of the `lab_vpc_internet_access` resource
-variable "cidr_block" {
-    default = "0.0.0.0/0"
-}
-
-# Custom VPC shows the use of tags to name resources
-# Instance Tenancy set to `default` is not to be confused with the concept of a Default VPC
 
 resource "aws_vpc" "lab_vpc" {
   cidr_block       = "172.31.0.0/16"
@@ -82,28 +50,20 @@ resource "aws_security_group" "ssh" {
     from_port = "22"
     to_port   = "22"
     protocol  = "tcp"
-
-    # To keep this example simple, we allow incoming SSH requests from any IP. In real-world usage, you should only
-    # allow SSH requests from trusted servers, such as a bastion host or VPN server.
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-# Custom Internet Gateway - not created as part of the initialization of a VPC
 
 resource "aws_internet_gateway" "lab_vpc_gateway" {
   vpc_id = aws_vpc.lab_vpc.id
 }
 
-# Create a Route in the Main Routing Table - no need to create a Custom Routing Table
-# Use `main_route_table_id` to pull the ID of the main routing table
-
 resource "aws_route" "lab_vpc_internet_access" {
   route_table_id         = aws_vpc.lab_vpc.main_route_table_id
-  destination_cidr_block = var.cidr_block
+  destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.lab_vpc_gateway.id
 }
 
-# Add a subnet to the VPC
 resource "aws_subnet" "lab_vpc_subnet_a" {
   vpc_id                  = aws_vpc.lab_vpc.id
   cidr_block              = "172.31.37.0/24"
@@ -112,25 +72,19 @@ resource "aws_subnet" "lab_vpc_subnet_a" {
   
 }
 
-
 data "aws_ami" "ubuntu" {
     most_recent = true
-
     filter {
         name = "name"
         values = ["ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-*"]
     }
-
     filter {
         name = "virtualization-type"
         values = ["hvm"]
     }
-
     owners = ["099720109477"]
-
 }
 
-#creating EC2 instance resource 0.
 resource "aws_instance" "ps-t2micro-0" {
     ami                          = data.aws_ami.ubuntu.id
     associate_public_ip_address  = true
@@ -158,10 +112,8 @@ resource "aws_instance" "ps-t2micro-0" {
     }
 
     timeouts {}
-
-   
 }
-#creating EC2 instance resource 1.
+
 resource "aws_instance" "ps-t2micro-1" {
     ami                          = data.aws_ami.ubuntu.id
     associate_public_ip_address  = true
@@ -191,7 +143,7 @@ resource "aws_instance" "ps-t2micro-1" {
     timeouts {}
 
 }
-#creating EC2 instance resource 2.
+
 resource "aws_instance" "ps-t2micro-2" {
     ami                          = data.aws_ami.ubuntu.id
     associate_public_ip_address  = true
@@ -206,10 +158,7 @@ resource "aws_instance" "ps-t2micro-2" {
     subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
     key_name                     = aws_key_pair.terrakey.key_name
     vpc_security_group_ids       = [aws_security_group.ssh.id]
-    tags = {
-        Name = "App-01"
-    }
-
+    tags = { Name = "App-01" }
     root_block_device {
         delete_on_termination = true
         encrypted             = false
@@ -217,11 +166,10 @@ resource "aws_instance" "ps-t2micro-2" {
         volume_size           = 8
         volume_type           = "gp2"
     }
-
     timeouts {}
 
 }
-#creating EC2 instance resource 3.
+
 resource "aws_instance" "ps-t2micro-3" {
     ami                          = data.aws_ami.ubuntu.id
     associate_public_ip_address  = true
@@ -236,10 +184,7 @@ resource "aws_instance" "ps-t2micro-3" {
     subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
     key_name                     = aws_key_pair.terrakey.key_name
     vpc_security_group_ids       = [aws_security_group.ssh.id]
-    tags = {
-        Name = "DB-01"
-    }
-
+    tags = { Name = "DB-01" }
     root_block_device {
         delete_on_termination = true
         encrypted             = false
@@ -247,11 +192,9 @@ resource "aws_instance" "ps-t2micro-3" {
         volume_size           = 8
         volume_type           = "gp2"
     }
-
     timeouts {}
-
 }
-#creating EC2 instance resource 4.
+
 resource "aws_instance" "ps-t2micro-4" {
     ami                          = data.aws_ami.ubuntu.id
     associate_public_ip_address  = true
@@ -266,10 +209,7 @@ resource "aws_instance" "ps-t2micro-4" {
     subnet_id                    = aws_subnet.lab_vpc_subnet_a.id
     key_name                     = aws_key_pair.terrakey.key_name
     vpc_security_group_ids       = [aws_security_group.ssh.id]
-    tags = {
-        Name = "DB-02"
-    }
-
+    tags = { Name = "DB-02" }
     root_block_device {
         delete_on_termination = true
         encrypted             = false
@@ -277,17 +217,14 @@ resource "aws_instance" "ps-t2micro-4" {
         volume_size           = 8
         volume_type           = "gp2"
     }
-
     timeouts {}
-
 }
-#creating s3 instance resource 0.
+
 resource "aws_s3_bucket" "ps-s3-0" {
     bucket                      = "ps-s3-0-${random_string.version.result}"
-    region                      = var.region
+    region                      = "us-west-2"
     request_payer               = "BucketOwner"
     tags                        = {}
-
     versioning {
         enabled    = false
         mfa_delete = false
@@ -299,10 +236,7 @@ resource "aws_s3_bucket_object" "privatekey" {
     bucket                      = aws_s3_bucket.ps-s3-0.id
     source                      = "./terrakey"
     acl                         = "public-read"
-    depends_on = [null_resource.ssh-gen]
 }
-
-#connect to different boxes and run commands to generate traffic (can even do on a timer)
 
 resource "null_resource" "action1" {
     triggers = {
@@ -323,7 +257,7 @@ resource "null_resource" "action1" {
             type   = "ssh"
             host = aws_instance.ps-t2micro-0.public_ip
             user = "ubuntu"
-            private_key = data.local_file.terrakey-private.content
+            private_key = data.local_file.pki.content
         }
     }
 }
@@ -347,12 +281,10 @@ resource "null_resource" "action2" {
             type   = "ssh"
             host = aws_instance.ps-t2micro-1.public_ip
             user = "ubuntu"
-            private_key = data.local_file.terrakey-private.content
+            private_key = data.local_file.pki.content
         }
     }
 }
-
-#app server cpu load 
 
 resource "null_resource" "action3" {
     triggers = {
@@ -374,7 +306,7 @@ resource "null_resource" "action3" {
             type   = "ssh"
             host = aws_instance.ps-t2micro-2.public_ip
             user = "ubuntu"
-            private_key = data.local_file.terrakey-private.content
+            private_key = data.local_file.pki.content
         }
     }
 }
@@ -401,7 +333,7 @@ resource "null_resource" "action4" {
             type   = "ssh"
             host = aws_instance.ps-t2micro-3.public_ip
             user = "ubuntu"
-            private_key = data.local_file.terrakey-private.content
+            private_key = data.local_file.pki.content
         }
     }
 }
@@ -426,7 +358,7 @@ resource "null_resource" "action5" {
             type   = "ssh"
             host = aws_instance.ps-t2micro-4.public_ip
             user = "ubuntu"
-            private_key = data.local_file.terrakey-private.content
+            private_key = data.local_file.pki.content
         }
     }
 }
