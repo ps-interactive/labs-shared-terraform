@@ -31,8 +31,8 @@ resource "aws_codecommit_repository" "_" {
   repository_name = "sagemaker-${random_string._.result}"
 }
 
-resource "null_resource" "_" {
-  provisioner "local-exec" {
-    command = "aws codecommit put-file --region ${data.aws_region.current.name} --repository-name ${aws_codecommit_repository._.repository_name} --branch-name main --file-content fileb://notebook.ipynb --file-path notebook.ipynb"
-  }
-}
+# resource "null_resource" "_" {
+#   provisioner "local-exec" {
+#     command = "aws codecommit put-file --region ${data.aws_region.current.name} --repository-name ${aws_codecommit_repository._.repository_name} --branch-name main --file-content fileb://notebook.ipynb --file-path notebook.ipynb"
+#   }
+# }
